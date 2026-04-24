@@ -7,6 +7,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from bot.config import settings
 from bot.db.middleware import DbSessionMiddleware
 from bot.handlers.confirm import router as confirm_router
+from bot.handlers.export import router as export_router
 from bot.handlers.history import router as history_router
 from bot.handlers.settings import router as settings_router
 from bot.handlers.start import router as start_router
@@ -29,6 +30,7 @@ async def main() -> None:
     dp.include_router(start_router)
     dp.include_router(settings_router)
     dp.include_router(history_router)
+    dp.include_router(export_router)
     dp.include_router(confirm_router)
     dp.include_router(voice_router)
 
