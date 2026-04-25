@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 import tempfile
@@ -17,7 +18,7 @@ def get_model(model_name: str) -> whisper.Whisper:
     return _model
 
 
-async def transcribe_audio(file_bytes: bytes, model_name: str) -> str:
+def _sync_transcribe(file_bytes: bytes, model_name: str) -> str:
     model = get_model(model_name)
     with tempfile.NamedTemporaryFile(suffix=".ogg", delete=False) as tmp:
         tmp.write(file_bytes)
@@ -31,3 +32,8 @@ async def transcribe_audio(file_bytes: bytes, model_name: str) -> str:
         return text
     finally:
         os.unlink(tmp_path)
+
+
+async def transcribe_audio(file_bytes: bytes, model_name: str) -> str:
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, _sync_transcribe, file_bytes, model_name)

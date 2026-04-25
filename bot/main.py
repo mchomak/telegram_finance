@@ -3,7 +3,9 @@ import logging
 import subprocess
 import sys
 
+import aiohttp
 from aiogram import Bot, Dispatcher
+from aiogram.client.session.aiohttp import AiohttpSession
 from aiogram.fsm.storage.memory import MemoryStorage
 from sqlalchemy import text
 
@@ -61,7 +63,10 @@ async def main() -> None:
     await _wait_for_db()
     _run_migrations()
 
-    bot = Bot(token=settings.bot_token)
+    session = AiohttpSession(
+        timeout=aiohttp.ClientTimeout(total=30, connect=10, sock_connect=10)
+    )
+    bot = Bot(token=settings.bot_token, session=session)
     dp = Dispatcher(storage=MemoryStorage())
 
     dp.update.middleware(DbSessionMiddleware())
