@@ -92,6 +92,16 @@ def debt_details_keyboard(participant_name: str) -> InlineKeyboardMarkup:
     )
 
 
+def export_period_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="За текущий месяц", callback_data="export:current_month")],
+            [InlineKeyboardButton(text="За прошлый месяц", callback_data="export:last_month")],
+            [InlineKeyboardButton(text="Всё время", callback_data="export:all_time")],
+        ]
+    )
+
+
 def confirm_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
