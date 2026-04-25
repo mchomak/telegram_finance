@@ -62,7 +62,7 @@ async def main() -> None:
     await _wait_for_db()
     _run_migrations()
 
-    session = AiohttpSession(timeout=30)
+    session = AiohttpSession(timeout=120)
     bot = Bot(token=settings.bot_token, session=session)
     dp = Dispatcher(storage=MemoryStorage())
 
