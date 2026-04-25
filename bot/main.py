@@ -3,7 +3,6 @@ import logging
 import subprocess
 import sys
 
-import aiohttp
 from aiogram import Bot, Dispatcher
 from aiogram.client.session.aiohttp import AiohttpSession
 from aiogram.fsm.storage.memory import MemoryStorage
@@ -63,9 +62,7 @@ async def main() -> None:
     await _wait_for_db()
     _run_migrations()
 
-    session = AiohttpSession(
-        timeout=aiohttp.ClientTimeout(total=30, connect=10, sock_connect=10)
-    )
+    session = AiohttpSession(timeout=30)
     bot = Bot(token=settings.bot_token, session=session)
     dp = Dispatcher(storage=MemoryStorage())
 
