@@ -62,7 +62,7 @@ async def main() -> None:
     await _wait_for_db()
     _run_migrations()
 
-    session = AiohttpSession(timeout=120)
+    session = AiohttpSession(timeout=120, proxy=settings.telegram_proxy)
     bot = Bot(token=settings.bot_token, session=session)
     dp = Dispatcher(storage=MemoryStorage())
 

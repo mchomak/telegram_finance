@@ -1,4 +1,5 @@
 aiogram==3.13.1
+aiohttp-socks==0.10.1
 openai==1.82.0
 openai-whisper
 pydantic-settings==2.7.0
