@@ -2,6 +2,7 @@ import json
 import logging
 from dataclasses import dataclass, field
 
+import httpx
 from openai import AsyncOpenAI
 
 from bot.config import settings
@@ -14,7 +15,20 @@ _client: AsyncOpenAI | None = None
 def _get_client() -> AsyncOpenAI:
     global _client
     if _client is None:
-        _client = AsyncOpenAI(api_key=settings.openai_api_key)
+        # Route OpenAI requests through the configured SOCKS5 proxy so the bot
+        # can reach api.openai.com from servers where direct access is blocked.
+        http_client = (
+            httpx.AsyncClient(proxy=settings.proxy_url)
+            if settings.proxy_url
+            else None
+        )
+        _client = AsyncOpenAI(
+            api_key=settings.openai_api_key,
+            http_client=http_client,
+            timeout=60.0,  # fail after 60 s instead of hanging for 10 minutes
+        )
+        if settings.proxy_url:
+            logger.info("OpenAI client using proxy: %s", settings.proxy_url.split("@")[-1])
     return _client
 
 
