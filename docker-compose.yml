@@ -3,6 +3,8 @@ services:
     build: .
     restart: unless-stopped
     env_file: .env
+    volumes:
+      - whisper_cache:/home/botuser/.cache/whisper
     depends_on:
       db:
         condition: service_healthy
@@ -22,3 +24,4 @@ services:
 
 volumes:
   pgdata:
+  whisper_cache:
