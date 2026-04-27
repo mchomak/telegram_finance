@@ -13,7 +13,6 @@ from bot.config import settings
 from bot.db.base import engine
 from bot.db.middleware import DbSessionMiddleware
 from bot.handlers.confirm import router as confirm_router
-from bot.services.transcription import preload_model
 from bot.handlers.export import router as export_router
 from bot.handlers.history import router as history_router
 from bot.handlers.settings import router as settings_router
@@ -63,13 +62,6 @@ async def main() -> None:
     logger.info("Starting bot")
     await _wait_for_db()
     _run_migrations()
-
-    loop = asyncio.get_event_loop()
-    try:
-        await loop.run_in_executor(None, preload_model, settings.whisper_model)
-    except Exception as exc:
-        logger.error("Failed to load Whisper model '%s': %s", settings.whisper_model, exc, exc_info=True)
-        sys.exit(1)
 
     session = AiohttpSession(
         proxy=settings.proxy_url,

@@ -7,7 +7,6 @@ from aiogram.types import Message
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.config import settings
 from bot.db.models import Category
 from bot.handlers.confirm import EditStates
 from bot.services.parser import parse_expense
@@ -31,7 +30,7 @@ async def handle_voice(
         file_bytes = await message.bot.download_file(file.file_path)
         audio_data = file_bytes.read()
         logger.info("Downloaded audio: %d bytes", len(audio_data))
-        transcription = await transcribe_audio(audio_data, settings.whisper_model)
+        transcription = await transcribe_audio(audio_data)
     except Exception as exc:
         logger.error("Transcription failed for user %s: %s", message.from_user.id, exc, exc_info=True)
         await status_msg.edit_text("Ошибка при распознавании речи. Попробуйте ещё раз.")

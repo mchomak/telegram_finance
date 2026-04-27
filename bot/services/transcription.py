@@ -1,51 +1,39 @@
-import asyncio
 import logging
-import os
-import tempfile
 
-import whisper
+import httpx
+from openai import AsyncOpenAI
+
+from bot.config import settings
 
 logger = logging.getLogger(__name__)
 
-_model: whisper.Whisper | None = None
-_model_name: str | None = None
+_client: AsyncOpenAI | None = None
 
 
-def preload_model(model_name: str) -> None:
-    """Load Whisper model at startup so OOM is detected early, not during request handling."""
-    global _model, _model_name
-    logger.info("Pre-loading Whisper model: %s", model_name)
-    _model = whisper.load_model(model_name)
-    _model_name = model_name
-    logger.info("Whisper model '%s' loaded successfully", model_name)
+def _get_client() -> AsyncOpenAI:
+    global _client
+    if _client is None:
+        http_client = (
+            httpx.AsyncClient(proxy=settings.proxy_url)
+            if settings.proxy_url
+            else None
+        )
+        _client = AsyncOpenAI(
+            api_key=settings.openai_api_key,
+            http_client=http_client,
+            timeout=120.0,
+        )
+    return _client
 
 
-def get_model(model_name: str) -> whisper.Whisper:
-    global _model, _model_name
-    if _model is None or _model_name != model_name:
-        logger.info("Loading Whisper model: %s", model_name)
-        _model = whisper.load_model(model_name)
-        _model_name = model_name
-    return _model
-
-
-def _sync_transcribe(file_bytes: bytes, model_name: str) -> str:
-    model = get_model(model_name)
-    with tempfile.NamedTemporaryFile(suffix=".ogg", delete=False) as tmp:
-        tmp.write(file_bytes)
-        tmp_path = tmp.name
-
-    try:
-        logger.info("Transcribing audio file: %s (%d bytes)", tmp_path, len(file_bytes))
-        # fp16=False: required for CPU inference, avoids half-precision errors
-        result = model.transcribe(tmp_path, language="ru", fp16=False)
-        text = result["text"].strip()
-        logger.info("Transcription complete: %d chars", len(text))
-        return text
-    finally:
-        os.unlink(tmp_path)
-
-
-async def transcribe_audio(file_bytes: bytes, model_name: str) -> str:
-    loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(None, _sync_transcribe, file_bytes, model_name)
+async def transcribe_audio(file_bytes: bytes) -> str:
+    client = _get_client()
+    logger.info("Transcribing %d bytes via OpenAI Whisper API", len(file_bytes))
+    response = await client.audio.transcriptions.create(
+        model="whisper-1",
+        file=("audio.ogg", file_bytes, "audio/ogg"),
+        language="ru",
+    )
+    text = response.text.strip()
+    logger.info("Transcription complete: %d chars", len(text))
+    return text
