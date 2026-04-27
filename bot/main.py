@@ -62,12 +62,7 @@ async def main() -> None:
     await _wait_for_db()
     _run_migrations()
 
-    session = AiohttpSession(
-        proxy=settings.proxy_url,
-        timeout=30,
-    )
-    if settings.proxy_url:
-        logger.info("Using proxy: %s", settings.proxy_url.split("@")[-1])
+    session = AiohttpSession(timeout=30)
     bot = Bot(token=settings.bot_token, session=session)
     dp = Dispatcher(storage=MemoryStorage())
 

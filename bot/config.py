@@ -5,7 +5,6 @@ class Settings(BaseSettings):
     bot_token: str
     database_url: str
     openai_api_key: str
-    proxy_url: str | None = None
 
     class Config:
         env_file = ".env"

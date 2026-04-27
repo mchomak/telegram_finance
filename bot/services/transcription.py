@@ -1,6 +1,5 @@
 import logging
 
-import httpx
 from openai import AsyncOpenAI
 
 from bot.config import settings
@@ -13,16 +12,7 @@ _client: AsyncOpenAI | None = None
 def _get_client() -> AsyncOpenAI:
     global _client
     if _client is None:
-        http_client = (
-            httpx.AsyncClient(proxy=settings.proxy_url)
-            if settings.proxy_url
-            else None
-        )
-        _client = AsyncOpenAI(
-            api_key=settings.openai_api_key,
-            http_client=http_client,
-            timeout=120.0,
-        )
+        _client = AsyncOpenAI(api_key=settings.openai_api_key, timeout=120.0)
     return _client
 
 

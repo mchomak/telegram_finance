@@ -1,6 +1,5 @@
 aiogram==3.13.1
-aiohttp-socks==0.10.1
-httpx[socks]
+httpx
 openai==1.82.0
 pydantic-settings==2.7.0
 sqlalchemy==2.0.36
