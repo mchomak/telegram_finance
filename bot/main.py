@@ -3,7 +3,6 @@ import logging
 import subprocess
 import sys
 
-import aiohttp
 from aiogram import Bot, Dispatcher
 from aiogram.client.session.aiohttp import AiohttpSession
 from aiogram.fsm.storage.memory import MemoryStorage
@@ -65,7 +64,7 @@ async def main() -> None:
 
     session = AiohttpSession(
         proxy=settings.proxy_url,
-        timeout=aiohttp.ClientTimeout(total=30, connect=10, sock_connect=10),
+        timeout=30,
     )
     if settings.proxy_url:
         logger.info("Using proxy: %s", settings.proxy_url.split("@")[-1])
