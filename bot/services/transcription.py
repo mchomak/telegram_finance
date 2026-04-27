@@ -8,13 +8,24 @@ import whisper
 logger = logging.getLogger(__name__)
 
 _model: whisper.Whisper | None = None
+_model_name: str | None = None
+
+
+def preload_model(model_name: str) -> None:
+    """Load Whisper model at startup so OOM is detected early, not during request handling."""
+    global _model, _model_name
+    logger.info("Pre-loading Whisper model: %s", model_name)
+    _model = whisper.load_model(model_name)
+    _model_name = model_name
+    logger.info("Whisper model '%s' loaded successfully", model_name)
 
 
 def get_model(model_name: str) -> whisper.Whisper:
-    global _model
-    if _model is None:
+    global _model, _model_name
+    if _model is None or _model_name != model_name:
         logger.info("Loading Whisper model: %s", model_name)
         _model = whisper.load_model(model_name)
+        _model_name = model_name
     return _model
 
 
@@ -25,8 +36,9 @@ def _sync_transcribe(file_bytes: bytes, model_name: str) -> str:
         tmp_path = tmp.name
 
     try:
-        logger.info("Transcribing audio file: %s", tmp_path)
-        result = model.transcribe(tmp_path, language="ru")
+        logger.info("Transcribing audio file: %s (%d bytes)", tmp_path, len(file_bytes))
+        # fp16=False: required for CPU inference, avoids half-precision errors
+        result = model.transcribe(tmp_path, language="ru", fp16=False)
         text = result["text"].strip()
         logger.info("Transcription complete: %d chars", len(text))
         return text

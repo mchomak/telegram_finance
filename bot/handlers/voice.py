@@ -23,17 +23,25 @@ router = Router()
 async def handle_voice(
     message: Message, state: FSMContext, session: AsyncSession
 ) -> None:
-    logger.info("Received voice from user %s", message.from_user.id)
+    logger.info("Received voice from user %s, file_id=%s", message.from_user.id, message.voice.file_id)
     status_msg = await message.reply("Распознаю голосовое сообщение…")
 
-    file = await message.bot.get_file(message.voice.file_id)
-    file_bytes = await message.bot.download_file(file.file_path)
-    transcription = await transcribe_audio(file_bytes.read(), settings.whisper_model)
+    try:
+        file = await message.bot.get_file(message.voice.file_id)
+        file_bytes = await message.bot.download_file(file.file_path)
+        audio_data = file_bytes.read()
+        logger.info("Downloaded audio: %d bytes", len(audio_data))
+        transcription = await transcribe_audio(audio_data, settings.whisper_model)
+    except Exception as exc:
+        logger.error("Transcription failed for user %s: %s", message.from_user.id, exc, exc_info=True)
+        await status_msg.edit_text("Ошибка при распознавании речи. Попробуйте ещё раз.")
+        return
 
     if not transcription:
         await status_msg.edit_text("Не удалось распознать речь. Попробуйте ещё раз.")
         return
 
+    logger.info("Transcription result for user %s: %r", message.from_user.id, transcription[:100])
     await status_msg.edit_text("Анализирую трату…")
 
     result = await session.execute(
@@ -46,7 +54,12 @@ async def handle_voice(
     category_names = [c.name for c in categories]
     category_map = {c.name: c for c in categories}
 
-    parsed = await parse_expense(transcription, category_names)
+    try:
+        parsed = await parse_expense(transcription, category_names)
+    except Exception as exc:
+        logger.error("GPT parsing failed for user %s: %s", message.from_user.id, exc, exc_info=True)
+        await status_msg.edit_text("Ошибка при анализе траты. Попробуйте ещё раз.")
+        return
 
     category_emoji: str | None = None
     if parsed.category and parsed.category in category_map:
