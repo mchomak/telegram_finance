@@ -18,4 +18,9 @@ COPY . .
 RUN useradd -m -u 1000 botuser && chown -R botuser:botuser /app
 USER botuser
 
+# Pre-download Whisper model at build time as botuser to avoid runtime permission issues
+# with the named volume — volume is initialized from the image directory on first mount.
+ARG WHISPER_MODEL=base
+RUN python -c "import whisper; whisper.load_model('${WHISPER_MODEL}')"
+
 CMD ["python", "-m", "bot.main"]
