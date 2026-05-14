@@ -18,7 +18,7 @@ def _get_client() -> AsyncOpenAI:
     return _client
 
 
-_SYSTEM_PROMPT = """Ты — ассистент для учёта личных расходов. Разбираешь русскоязычные транскрипции голосовых сообщений в JSON.
+_SYSTEM_PROMPT = """Ты — ассистент для учёта личных расходов. Разбираешь русскоязычные сообщения о тратах в JSON.
 
 Извлеки следующие поля:
 - amount: число (float) или null, если сумма не упомянута
@@ -70,9 +70,9 @@ class ParsedExpense:
 async def parse_expense(transcription: str, categories: list[str]) -> ParsedExpense:
     client = _get_client()
     category_list = ", ".join(categories) if categories else "нет категорий"
-    user_msg = f"Категории: {category_list}\n\nТранскрипция: {transcription}"
+    user_msg = f"Категории: {category_list}\n\nСообщение: {transcription}"
 
-    logger.info("Sending transcription to GPT for parsing")
+    logger.info("Sending expense message to GPT for parsing")
     response = await client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[

@@ -18,6 +18,56 @@ logger = logging.getLogger(__name__)
 router = Router()
 
 
+async def _active_categories(session: AsyncSession, user_id: int) -> list[Category]:
+    result = await session.execute(
+        select(Category).where(
+            Category.user_id == user_id,
+            Category.is_active.is_(True),
+        )
+    )
+    return list(result.scalars().all())
+
+
+async def _parse_and_confirm(
+    message: Message,
+    state: FSMContext,
+    session: AsyncSession,
+    expense_text: str,
+    status_msg: Message,
+) -> None:
+    categories = await _active_categories(session, message.from_user.id)
+    category_names = [c.name for c in categories]
+    category_map = {c.name: c for c in categories}
+
+    try:
+        parsed = await parse_expense(expense_text, category_names)
+    except Exception as exc:
+        logger.error("GPT parsing failed for user %s: %s", message.from_user.id, exc, exc_info=True)
+        await status_msg.edit_text("Ошибка при анализе траты. Попробуйте ещё раз.")
+        return
+
+    category_emoji: str | None = None
+    if parsed.category and parsed.category in category_map:
+        category_emoji = category_map[parsed.category].emoji
+
+    await state.set_data(
+        {
+            "transcription": expense_text,
+            "amount": parsed.amount,
+            "category": parsed.category,
+            "expense_date": parsed.expense_date,
+            "note": parsed.note,
+            "participants": [p.to_dict() for p in parsed.participants],
+            "message_date": message.date.date().isoformat(),
+        }
+    )
+
+    text = format_confirmation(parsed, category_emoji, expense_text)
+    await status_msg.delete()
+    confirm_msg = await message.reply(text, reply_markup=confirm_keyboard(), parse_mode="HTML")
+    await state.update_data(confirm_message_id=confirm_msg.message_id)
+
+
 @router.message(StateFilter(None), lambda m: m.voice is not None)
 async def handle_voice(
     message: Message, state: FSMContext, session: AsyncSession
@@ -43,40 +93,14 @@ async def handle_voice(
     logger.info("Transcription result for user %s: %r", message.from_user.id, transcription[:100])
     await status_msg.edit_text("Анализирую трату…")
 
-    result = await session.execute(
-        select(Category).where(
-            Category.user_id == message.from_user.id,
-            Category.is_active.is_(True),
-        )
-    )
-    categories = list(result.scalars().all())
-    category_names = [c.name for c in categories]
-    category_map = {c.name: c for c in categories}
+    await _parse_and_confirm(message, state, session, transcription, status_msg)
 
-    try:
-        parsed = await parse_expense(transcription, category_names)
-    except Exception as exc:
-        logger.error("GPT parsing failed for user %s: %s", message.from_user.id, exc, exc_info=True)
-        await status_msg.edit_text("Ошибка при анализе траты. Попробуйте ещё раз.")
-        return
 
-    category_emoji: str | None = None
-    if parsed.category and parsed.category in category_map:
-        category_emoji = category_map[parsed.category].emoji
-
-    await state.set_data(
-        {
-            "transcription": transcription,
-            "amount": parsed.amount,
-            "category": parsed.category,
-            "expense_date": parsed.expense_date,
-            "note": parsed.note,
-            "participants": [p.to_dict() for p in parsed.participants],
-            "message_date": message.date.date().isoformat(),
-        }
-    )
-
-    text = format_confirmation(parsed, category_emoji, transcription)
-    await status_msg.delete()
-    confirm_msg = await message.reply(text, reply_markup=confirm_keyboard(), parse_mode="HTML")
-    await state.update_data(confirm_message_id=confirm_msg.message_id)
+@router.message(StateFilter(None), lambda m: m.text is not None and m.text.strip())
+async def handle_text(
+    message: Message, state: FSMContext, session: AsyncSession
+) -> None:
+    expense_text = message.text.strip()
+    logger.info("Received text from user %s: %r", message.from_user.id, expense_text[:100])
+    status_msg = await message.reply("Анализирую трату…")
+    await _parse_and_confirm(message, state, session, expense_text, status_msg)
